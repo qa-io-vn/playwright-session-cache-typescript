@@ -1,0 +1,7 @@
+node_modules/
+.npm-cache/
+.auth/
+.proof/
+.features-gen/
+test-results/
+playwright-report/

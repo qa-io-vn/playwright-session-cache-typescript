@@ -1,0 +1,19 @@
+{
+  "name": "playwright-session-cache-typescript",
+  "version": "1.0.0",
+  "description": "Parallel-safe cached-session login for Playwright / playwright-bdd — blog post + working sample.",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "prove": "tsx scripts/prove-parallel.ts",
+    "test": "bddgen && playwright test",
+    "verify": "npm run typecheck && npm run prove && npm test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "playwright-bdd": "^9.2.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
