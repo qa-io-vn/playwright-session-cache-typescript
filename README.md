@@ -31,6 +31,21 @@ npm run verify     # typecheck + parallel proof + live saucedemo example
 3. `playwright.config.ts` — `projects: session.projects([...])`
 4. `steps/world.ts` — `export const test = session.extendTest(base)` *(optional; only if your app uses sessionStorage)*
 
+## Testing the login flow (opting out)
+
+Login-flow tests must run logged-out, so they skip the cache. This repo puts them
+in a separate `login` **project** with no setup dependency and an explicit empty
+`storageState` (see [playwright.config.ts](playwright.config.ts),
+[features-login/](features-login/), [steps-login/](steps-login/)):
+
+```ts
+{ name: 'login', testDir: loginTestDir, use: { ...chrome, storageState: { cookies: [], origins: [] } } }
+```
+
+`npm test` runs the cached `chromium` project **and** the logged-out `login`
+project (1 happy + 3 unhappy login scenarios) together. Full explanation in
+[BLOG.md §8](BLOG.md).
+
 > ⚠️ `.auth/` holds real session cookies and is git-ignored. Never commit it.
 
 ## Sibling

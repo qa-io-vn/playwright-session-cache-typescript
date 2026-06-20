@@ -272,15 +272,75 @@ a large set of cached feature tests.
 
 ---
 
-## 8. What's in this repo
+## 8. Testing the login flow itself (opting out)
+
+You still need tests for the login form — happy and unhappy paths — and those must
+run **logged-out**. The technique is to put them in a **separate project that does
+not get the cached session**: no setup dependency, and an explicit *empty*
+`storageState` to force a fresh, unauthenticated context.
+
+```ts
+// playwright.config.ts
+projects: [
+  // authenticated feature tests (cached)
+  ...session.projects([{ name: 'chromium', testDir: appTestDir, use: { ...chrome } }]),
+
+  // OPT-OUT: no dependency on the setup project + EMPTY storageState => logged-out
+  {
+    name: 'login',
+    testDir: loginTestDir,
+    use: { ...chrome, storageState: { cookies: [], origins: [] } },
+  },
+],
+```
+
+Two details that matter:
+
+- The empty `storageState: { cookies: [], origins: [] }` **forces** a clean context
+  even if something set a global default — more explicit than just omitting it.
+- Login steps use the **plain** `base` test (`createBdd(base)`), **not**
+  `session.extendTest(base)`, so no cached `sessionStorage` is replayed either.
+
+Now the login feature exercises the real form with no caching:
+
+```gherkin
+Feature: Login flow (NOT cached — fresh session every scenario)
+  Background:
+    Given I am on the login page
+
+  Scenario: Valid credentials reach the inventory      # happy
+    When I log in with "standard_user" and "secret_sauce"
+    Then I should land on the inventory page
+
+  Scenario: Wrong password is rejected                 # unhappy
+    When I log in with "standard_user" and "wrong_password"
+    Then I should see the login error "do not match"
+
+  Scenario: Locked-out user is blocked                 # unhappy
+    When I log in with "locked_out_user" and "secret_sauce"
+    Then I should see the login error "locked out"
+```
+
+> **Per-test alternative:** if you don't want a whole project, override it for one
+> spec/describe with `test.use({ storageState: { cookies: [], origins: [] } })`.
+> The separate-project approach is cleaner because it also drops the setup
+> dependency, so login tests don't wait on a login they're about to test.
+
+This repo runs both: an authenticated `chromium` project and the logged-out
+`login` project, side by side — `npm test` shows the cached scenarios and the
+happy/unhappy login scenarios all green.
+
+---
+
+## 9. What's in this repo
 
 ```
 src/session-cache.ts          # THE drop-in (copy this one file)
 session.config.ts             # defineSessionCache({ login })
 auth.session-setup.ts         # session.registerSetup()
-playwright.config.ts          # session.projects([...])
-steps/                        # world.ts (extendTest) + inventory.steps.ts
-features/inventory.feature    # NO login step — that's the proof
+playwright.config.ts          # session.projects([...]) + the opt-out `login` project
+steps/  features/             # cached feature tests (extendTest, NO login step)
+steps-login/  features-login/ # login-flow tests (plain base test, fresh context)
 scripts/prove-parallel.ts     # 8 processes -> exactly 1 login
 ```
 
@@ -293,7 +353,7 @@ npm install && npx playwright install chromium && npm run verify
 
 ---
 
-## 9. Takeaway
+## 10. Takeaway
 
 Authentication is a **build-once fixture**, not a per-test action. Capture the
 session with `storageState()`, handle the `sessionStorage` gap, guard it with a TTL
